@@ -176,9 +176,27 @@ def mask_generate(loss_location: np.ndarray, Lable: np.ndarray)\
     return label
 
 
+# TODO(Byan Xia): Add expression
 def test_min_data(test_location: dict):
     class_num = np.empty(shape=(0, ))
     for per_class in test_location.values():
         per_class_num, _ = per_class.shape
         class_num = np.append(class_num, per_class_num)
     return np.min(class_num)
+
+
+# TODO(Byan Xia): Add expression
+def show_pic(pic, location, current_label, get_num):
+    label_num, _ = location.shape
+    pic = pic.transpose((1, 2, 0))
+    pic = np.where(pic == True, 255, 0)
+
+    plt.subplot(111)
+    plt.imshow(pic)
+    for per_label in range(label_num):
+        x, y = location[per_label]
+        if int(per_label / get_num) == current_label:
+            plt.plot(y, x, c='r', marker='x')
+        else:
+            plt.plot(y, x, c='g', marker='x')
+    plt.show()
