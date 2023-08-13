@@ -1,11 +1,15 @@
+from typing import Tuple
+
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import scipy.io as io
 import argparse
+from sklearn.decomposition import PCA
 
 
-def read_mat(mat_dir: str) -> np.ndarray:
+def read_mat(mat_dir: str) \
+        -> np.ndarray:
     """
     Get the ndarray about mat.
     :param mat_dir: dir about mat file
@@ -75,29 +79,106 @@ class data_aug:
         return None
 
 
-def set_band(HSI: np.ndarray, generate_num: int, mode="random") -> np.ndarray:
+def set_pca(HSI: np.ndarray, choose_band=3) \
+        -> np.ndarray:
     """
-    The way of exchange mutil band to 3 band, defalut random.
+    Use PCA to get target hsi data.
+    :param choose_band: The principal components which remain
     :param HSI: Initial HSI
-    :param generate_num: Num of generate
-    :param mode: The way to change, defalut random
-    :return: segment
+    :return: PCA output
     """
-    choose_band = 3
     # Deep Copy
     hsi = HSI.copy()
-    height, width, band = HSI.shape
-    # Initial Data Group
-    segment = np.zeros((generate_num, 3, height, width))
-    if mode == "random":
-        # Exchange dim to shuffle dim
-        hsi = hsi.transpose((2, 0, 1))
-        for num in range(generate_num):
-            np.random.shuffle(hsi)
-            # Choose the 0 to choose band
-            hsi = hsi[0: choose_band, :, :]
-            # Put into container
-            segment[num, :, :, :] = hsi
-        # Recover
-        segment = segment.transpose((0, 2, 3, 1))
-    return segment
+    heigth, width, band = hsi.shape
+    # Reshape to pair pca input
+    hsi = hsi.reshape((heigth * width), band)
+    # PCA process
+    pca = PCA(n_components=choose_band, copy=False)
+    hsi = pca.fit_transform(hsi)
+    # Reshape as initial image
+    hsi = hsi.reshape(heigth, width, choose_band)
+    return hsi
+
+
+def split_location(label_location: dict, input_num: int, label_num: int, current_class: int) \
+        -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Get the splited location as the given num. When input test data min label num, this function can
+    generate test location.
+
+    :param label_num: The num of label location
+    :param label_location: Dictionary about train dataset
+    :param input_num: The num of input SAM location
+    :param current_class: current train class
+    :return: input_index, label_index
+    """
+
+    # Initial input_index and label_index
+    input_index = np.empty(shape=(0, 2))
+    label_index = np.empty(shape=(0, 2))
+    for per_class in label_location.values():
+        label_num, _ = per_class.shape
+        # Shuffle location and input_index
+        np.random.shuffle(per_class)
+        input_index = np.append(input_index, per_class[0: input_num, :], axis=0)
+        label_index = np.append(label_index, per_class[input_num:, :], axis=0)
+    return input_index, label_index
+
+
+def generate_sam_label(input_num: int, loss_num: int, current_class: int, max_class: int) \
+        -> np.ndarray:
+    """
+    Acorrding to the class which is training at present to generate the label that can
+    distinguish the background and fore.
+    :param loss_num: The num of loss pair label
+    :param input_num: The num of input SAM label
+    :param current_class: current train class
+    :param max_class: The num of class
+    :return: input_label, loss_label
+    """
+    count = 0
+    # Initial label containers
+    input_label = np.empty(shape=(0, ))
+    loss_label = np.empty(shape=(0, ))
+
+    for per_class in range(max_class):
+        # if Ture, append 1 (fore)
+        if current_class == count:
+            input_label = np.append(input_label, np.ones(shape=(input_num, )), axis=0)
+            loss_label = np.append(loss_label, np.ones(shape=(loss_num, )), axis=0)
+            count += 1
+            continue
+        # Others append 0 (background)
+        input_label = np.append(input_label, np.zeros(shape=(input_num, )), axis=0)
+        loss_label = np.append(loss_label, np.zeros(shape=(loss_num, )), axis=0)
+    return input_label, loss_label
+
+
+def mask_generate(loss_location: np.ndarray, Lable: np.ndarray)\
+        -> np.ndarray:
+    """
+    Generate the mask of SAM output.
+    :param loss_location: Location of loss pair
+    :param Lable: Initial label
+    :return: SAM output mask(bool)
+    """
+    # Deep Copy
+    labels = Lable.copy()
+    max_class = np.max(labels)
+    label_num, _ = loss_location.shape
+    for per_label in range(label_num):
+        # Get per label location
+        current_label_x, current_label_y = loss_location[per_label, :].astype("int")
+        # Set location in label to -1
+        labels[current_label_x, current_label_y] = (max_class + 2)
+    # Set label where equals -1 to True, Others False
+    label = np.where(labels == (max_class + 2), True, False)
+    return label
+
+
+def test_min_data(test_location: dict):
+    class_num = np.empty(shape=(0, ))
+    for per_class in test_location.values():
+        per_class_num, _ = per_class.shape
+        class_num = np.append(class_num, per_class_num)
+    return np.min(class_num)

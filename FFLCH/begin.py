@@ -9,8 +9,9 @@ import argparse
 
 from segment_anything import sam_model_registry, SamPredictor
 from Simple_Net import Simple_Net
-from data_process import data_aug, set_band
+from data_process import data_aug, set_pca
 from get_argparse import set_args
+from train import model, train
 
 
 def train_process(HSI, Label, param):
@@ -18,9 +19,14 @@ def train_process(HSI, Label, param):
     # Get train location and test location
     train_location, test_location = aug.segment_data()
     # Set test data args
-    aug.test_data_num()
+    aug.set_test_data_num()
     # Seg to 3 band data
-    augment_HSI = set_band(HSI, param.train_num, mode="random")
+    pca_HSI = set_pca(HSI, choose_band=3)
+
+    trains = train(in_channel=3, out_channel=3, train_location=train_location, test_location=test_location, param=param)
+    trains.train_mode(True, False)
+
+    trains.train_process(pca_HSI, Label)
 
 
 if __name__ == "__main__":

@@ -29,13 +29,14 @@ class set_args:
         params.add_argument("--train_num", type=int, default=16, help="the num of one class train data")
         params.add_argument("--max_classes", type=int, default=0)
         params.add_argument("--input_sam", type=float, default=0.5, help="the rate of train point to sam")
-        params.add_argument("--epoch", type=int, default=100, help="epoch")
+        params.add_argument("--epochs", type=int, default=100, help="epoch")
         params.add_argument("--if_sam", type=bool, default=True, help="if use sam")
         params.add_argument("--if_mlp", type=bool, default=True, help="if use mlp")
         if self._mat_name == "pavia":
             self._args = params.parse_args()
 
-    def _load_data(self) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    def _load_data(self)\
+            -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Get required mat data, label data and set max_classes.
         """
