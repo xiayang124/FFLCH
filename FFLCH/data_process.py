@@ -1,11 +1,11 @@
 from typing import Tuple
 
 import numpy as np
-import torch
 import matplotlib.pyplot as plt
 import scipy.io as io
-import argparse
+import torch
 from sklearn.decomposition import PCA
+import random
 
 
 def read_mat(mat_dir: str) \
@@ -185,18 +185,89 @@ def test_min_data(test_location: dict):
     return np.min(class_num)
 
 
-# TODO(Byan Xia): Add expression
-def show_pic(pic, location, current_label, get_num):
+def show_pic(data, location: np.ndarray, current_label: int, get_num: int, stage: str, replace=False, save=False):
+    """
+    Show the final data
+    :param data: Pic
+    :param location: The point location
+    :param current_label: The label type which is training
+    :param get_num: Per class train num
+    :param stage: Where the pic comes from
+    :param replace: Turn the Bool data to Binary data
+    :param save: Whether save the file
+    """
+    # exchange
+    if type(data) == torch.Tensor:
+        data = data.detach().cpu()
+    target_pic = np.array(data)
+    # Norm to [0, 255]
+    if not replace:
+        target_pic = data_to_255(target_pic)
+    target_pic = np.squeeze(target_pic)
+    # The shape of pic
+    dim = target_pic.shape
+    # The num of the location point
     label_num, _ = location.shape
-    pic = pic.transpose((1, 2, 0))
-    pic = np.where(pic == True, 255, 0)
 
-    plt.subplot(111)
-    plt.imshow(pic)
-    for per_label in range(label_num):
-        x, y = location[per_label]
-        if int(per_label / get_num) == current_label:
-            plt.plot(y, x, c='r', marker='x')
-        else:
-            plt.plot(y, x, c='g', marker='x')
-    plt.show()
+    assert len(dim) == 2 or len(dim) == 3, f"Require 2/3 dim, expected {len(dim)}"
+    if len(dim) == 2:
+        # The segment data
+        plt.subplot(111)
+        # Exchange the data to float
+        target_pic = target_pic.astype("float")
+        # Show the pic
+        plt.imshow(target_pic)
+
+        if replace:
+            target_pic = np.where(target_pic == True, 255, 0)
+        # Draw the location point
+        for per_label in range(label_num):
+            x, y = location[per_label]
+            if int(per_label / get_num) == current_label:
+                plt.plot(y, x, c='r', marker='x')
+            else:
+                plt.plot(y, x, c='g', marker='x')
+        # DO NOT SET BLOCK TO FALSE!
+        plt.show(block=True)
+        return
+    else:
+        dim_1, dim_2, dim_3 = target_pic.shape
+        save = random.randint(1, 10000)
+        # Reshape back to normal pic
+        if dim_1 == 3:
+            target_pic = target_pic.transpose((1, 2, 0))
+        if replace:
+            target_pic = np.where(target_pic == True, 255, 0)
+        # Float
+        target_pic = target_pic.astype("float")
+        target_pic = target_pic / 255
+        # Save file
+        if save:
+            plt.imsave("./" + stage + str(save) + ".png", target_pic)
+        return
+
+
+def get_input_num(train_num, input_rate)\
+        -> Tuple[np.ndarray, np.ndarray]:
+    """
+    The num of input sam data and Loss data.
+    :param train_num: Train num
+    :param input_rate: The rate of input sam
+    :return: train_num, input_rate
+    """
+    # The sum of inputing SAM model label
+    input_num = int(train_num * input_rate)
+    # The sum of Loss label
+    label_num = train_num - input_num
+    return input_num, label_num
+
+
+def data_to_255(HSI)\
+        -> np.ndarray:
+    """
+    Norm data and set range to [0, 255]
+    :param HSI: Data
+    :return: Norm to [0, 255] data
+    """
+    return (HSI - np.min(HSI)) / (np.max(HSI) - np.min(HSI)) * 255
+

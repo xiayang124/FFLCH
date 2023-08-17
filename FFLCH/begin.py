@@ -1,15 +1,4 @@
-import torch
-import torch.nn as nn
-import matplotlib.pyplot as plt
-import numpy as np
-import time
-import torch.optim as optim
-import os
-import argparse
-
-from segment_anything import sam_model_registry, SamPredictor
-from Simple_Net import Simple_Net
-from data_process import data_aug, set_pca
+from data_process import data_aug, set_pca, show_pic
 from get_argparse import set_args
 from train import train
 
@@ -20,11 +9,14 @@ def train_process(HSI, Label, param):
     train_location, test_location = aug.segment_data()
     # Set test data args
     aug.set_test_data_num()
+
+    height, width, band = HSI.shape
     # Seg to 3 band data
     pca_HSI = set_pca(HSI, choose_band=3)
 
     trains = train(in_channel=3, out_channel=3, train_location=train_location, test_location=test_location, param=param)
     trains.train_mode()
+    trains.feed_net(sam_train=True, mlp_train=False)
     trains.train_process(pca_HSI, Label)
 
 
@@ -36,6 +28,6 @@ if __name__ == "__main__":
     args, HSI, Label = arg.get_arg()
 
     # debug
-    args.epochs = 300
+    args.epochs = 500
 
     train_process(HSI, Label, args)

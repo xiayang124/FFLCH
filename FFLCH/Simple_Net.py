@@ -31,7 +31,7 @@ class Simple_Net(nn.Module):
         if if_hide_layer:
             hide_layer = 16
             self.conv11 = nn.Conv2d(in_channels, hide_layer, kernel_size=1, stride=1)
-            self.hide_norm = nn.BatchNorm2d(hide_layer)
+            self.hide_norm = nn.LayerNorm(hide_layer)
             self.relu = nn.ReLU()
             # Group 1
             if if_conv33:
@@ -45,12 +45,11 @@ class Simple_Net(nn.Module):
         self.conv11 = nn.Conv2d(in_channels, out_channel, kernel_size=1, stride=1)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-
         # only conv3*3
         if self.if_conv33 and not self.if_hide_layer:
             data = self.conv33(data)
             if self.if_norm:
-                data = self.norm(data)
+                data = self.norm(data) * 255
             return data
 
         # hide_layer is needed
@@ -60,11 +59,11 @@ class Simple_Net(nn.Module):
             data = self.relu(data)
             data = self.group(data)
             if self.if_norm:
-                data = self.norm(data)
+                data = self.norm(data) * 255
             return data
 
         # only 1*1 conv
         data = self.conv11(data)
         if self.if_norm:
-            data = self.norm(data)
+            data = self.norm(data) * 255
         return data
