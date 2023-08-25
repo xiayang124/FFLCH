@@ -24,18 +24,21 @@ class set_args:
         params.add_argument("--checkpoint_path", type=str, default="../segment_anything/sam_vit_b_01ec64.pth",
                             help="sam model path, must be same as model")
         params.add_argument("--mode", type=str, default="vit_b", help="sam model, must be same as checkpoint_path")
-        params.add_argument("--batch_size", type=int, default=1, help="batch_size")
-        params.add_argument("--learning_rate", type=float, default=0.0001, help="learning rate")
-        params.add_argument("--train_num", type=int, default=4, help="the num of one class train data")
+        params.add_argument("--learning_rate", type=float, default=0.002, help="learning rate")
+        params.add_argument("--train_num", type=int, default=10, help="the num of one class train data")
         params.add_argument("--max_classes", type=int, default=0)
         params.add_argument("--input_sam", type=float, default=0.5, help="the rate of train point to sam")
-        params.add_argument("--epochs", type=int, default=100, help="epoch")
-        params.add_argument("--if_sam", type=bool, default=True, help="if use sam")
-        params.add_argument("--if_mlp", type=bool, default=True, help="if use mlp")
+        params.add_argument("--epochs", type=int, default=200, help="epoch")
         if self._mat_name == "pavia":
             self._args = params.parse_args()
-            self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"
-            self._args.mode = "vit_h"
+            # self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"
+            # self._args.mode = "vit_h"
+        if self._mat_name == "paviau":
+            self._args = params.parse_args()
+            self._args.hsi = "./dataset/hsi/PaviaU.mat"
+            self._args.label = "./dataset/label/PaviaU_gt.mat"
+            # self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"
+            # self._args.mode = "vit_h"
 
     def _load_data(self)\
             -> Tuple[numpy.ndarray, numpy.ndarray]:

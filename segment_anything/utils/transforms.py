@@ -33,7 +33,12 @@ class ResizeLongestSide:
         """
         Expects a numpy array with shape HxWxC in uint8 format.
         """
-        target_size = self.get_preprocess_shape(image.shape[2], image.shape[3], self.target_length)
+        if len(image.shape) == 4:
+            target_size = self.get_preprocess_shape(image.shape[2], image.shape[3], self.target_length)
+        else:
+            target_size = self.get_preprocess_shape(image.shape[0], image.shape[1], self.target_length)
+            image = torch.from_numpy(image).cuda()
+            image = image.permute((2, 0, 1))
         test_data = resize(image, target_size)
         return test_data
 

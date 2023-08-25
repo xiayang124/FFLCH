@@ -29,3 +29,7 @@ def OA(target_output, truly, if_replace01=True) \
 def AA(target_output, truly, if_replace01=True)\
         -> List[float]:
     pass
+
+
+def Precise():
+    pass

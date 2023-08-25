@@ -195,6 +195,7 @@ class SamAutomaticMaskGenerator:
         return curr_anns
 
     def _generate_masks(self, image: np.ndarray) -> MaskData:
+        # origin size
         orig_size = image.shape[:2]
         crop_boxes, layer_idxs = generate_crop_boxes(
             orig_size, self.crop_n_layers, self.crop_overlap_ratio
@@ -233,7 +234,8 @@ class SamAutomaticMaskGenerator:
         x0, y0, x1, y1 = crop_box
         cropped_im = image[y0:y1, x0:x1, :]
         cropped_im_size = cropped_im.shape[:2]
-        self.predictor.set_image(cropped_im)
+        input_image_torch = self.predictor.get_apply_image(cropped_im)
+        self.predictor.set_torch_image(input_image_torch.float(), cropped_im.shape[:2])
 
         # Get points for this crop
         points_scale = np.array(cropped_im_size)[None, ::-1]

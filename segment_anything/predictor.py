@@ -128,7 +128,7 @@ class SamPredictor:
             instead of a binary mask.
 
         Returns:
-          (torch.tensor): The output masks in CxHxW format, where C is the
+          (torch.Tensor): The output masks in CxHxW format, where C is the
             number of masks, and (H, W) is the original image size.
           (np.ndarray): An array of length C containing the model's
             predictions for the quality of each mask.
