@@ -2,13 +2,14 @@ import data_process as dls
 import torch
 from get_argparse import set_args
 import train
+import utils.eval as e
 import numpy as np
 
 
 def initial_process(HSI, Label, param):
     # TODO(Byan Xia): 怎么把这组参数另找个地方设置呢？
     if_mlp_train = True
-    if_feed_mlp = True
+    if_feed_mlp = False
     if_sam_train = False
     if_feed_sam = True
     out_channel = 3
@@ -31,6 +32,8 @@ def initial_process(HSI, Label, param):
     loss_direct = torch.from_numpy(loss_direct).to(param.device)
     test_direct = torch.from_numpy(test_direct).to(param.device)
 
+    evals = e.evaluation()
+
     for per_class in range(param.max_classes):
         # Per class label
         per_input_label, per_loss_label, per_train_label, per_test_label \
@@ -50,14 +53,19 @@ def initial_process(HSI, Label, param):
                                loss_location=loss_direct,
                                train_location=train_direct,
                                test_location=test_direct,
-                               current_class=per_class)
+                               current_class=per_class,
+                               evals=evals)
         training.train_mode(mlp_train=if_mlp_train, sam_train=if_sam_train)
         training.feed_net(mlp_train=if_feed_mlp, sam_train=if_feed_sam)
         training.train_process(HSI.copy(), Label.copy())
 
+    oa = evals.OA()
+    aa = evals.average_acc()
+    print("oa is " + str(oa) + ", aa is " + str(aa))
+
 
 if __name__ == "__main__":
-    HSI_name = "Salina"
+    HSI_name = "PaviaU"
 
     # Get the args and data
     arg = set_args(HSI_name)

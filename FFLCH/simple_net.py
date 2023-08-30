@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 
-# TODO(Byan Xia): 加1~2层用于SAM尾部的1*1 conv
 class Simple_Net(nn.Module):
     def __init__(self, in_channels: int, out_channel=3, if_conv33=False, if_norm=True, if_hide_layer=False):
         """

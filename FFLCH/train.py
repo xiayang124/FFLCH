@@ -8,7 +8,7 @@ import numpy as np
 import time
 
 import data_process
-import utils.eval as evals
+import utils.eval as e
 from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
 from simple_net import Simple_Net
 
@@ -17,6 +17,7 @@ class model(nn.Module):
     """
     Model settings.
     """
+
     def __init__(self, in_channal: int, out_channal: int, param):
         super().__init__()
         self.param = param
@@ -24,9 +25,10 @@ class model(nn.Module):
         self.out_channal = out_channal
         self.device = param.device
         self.loss = nn.BCEWithLogitsLoss().to(self.device)
-        self.MLP = Simple_Net(in_channal, out_channal, if_norm=False, if_hide_layer=True).to(self.device)
+        self.IntoSAM = Simple_Net(in_channal, out_channal, if_norm=False, if_hide_layer=True).to(self.device)
+        self.AfterSAM = Simple_Net(1, 1, if_norm=False, if_hide_layer=True).to(self.device)
         self.SAM = sam_model_registry[param.mode](param.checkpoint_path).to(self.device)
-        self.Adam = optim.Adam(self.MLP.parameters(), lr=param.learning_rate)
+        self.Adam = optim.Adam(self.IntoSAM.parameters(), lr=param.learning_rate)
         self.sam = SamPredictor(self.SAM)
         self.PegSam = SamAutomaticMaskGenerator(self.SAM)
 
@@ -39,11 +41,11 @@ class model(nn.Module):
         otherwise the sam will be frozen. mlp_train and sam_train all False will cause the net never
         backward.
 
-        :param mlp_train: Whether freeze the MLP block, defalut True
+        :param mlp_train: Whether freeze the IntoSAM block, defalut True
         :param sam_train: Whether freeze the SAM block, defalut False
         """
         if not mlp_train:
-            for param in self.MLP.parameters():
+            for param in self.IntoSAM.parameters():
                 param.requires_grad = False
         if sam_train:
             for param in self.SAM.parameters():
@@ -83,11 +85,12 @@ class train(model):
             loss_location: torch.Tensor,
             train_location: np.ndarray,
             test_location: np.ndarray,
-            current_class: int
+            current_class: int,
+            evals: e
     ):
         """
-        :param in_channel: MLP in channel
-        :param out_channel: MLP out channel
+        :param in_channel: IntoSAM in channel
+        :param out_channel: IntoSAM out channel
         :param param: Args
         :param input_label: The label which can distinguish background and foreground input SAM.
         :param loss_label: The label used in loss
@@ -97,6 +100,7 @@ class train(model):
         :param train_location: The test label location of input sam
         :param test_location: The test label location of loss
         :param current_class: Current training class
+        :param evals
         """
         super().__init__(in_channal=in_channel, out_channal=out_channel, param=param)
         self.input_label = input_label
@@ -110,6 +114,7 @@ class train(model):
         self.test_location = test_location
 
         self.current_class = current_class
+        self.evals = evals
 
     # TODO(Byan Xia): 整个流程需要继续优化，太冗杂且无序
     def train_process(self, HSI: np.ndarray, Label: np.ndarray):
@@ -130,42 +135,43 @@ class train(model):
             # [h, w, b] -> [b, h, w] -> [1, b, h, w]
             torch_train_pic = torch.unsqueeze(torch_train_pic.permute((2, 0, 1)), dim=0)
             for epoch in range(self.param.epochs):
-                self.MLP.train()
+                self.IntoSAM.train()
                 begin_time = time.time()
                 # Feed net
-                losses, OA = self._mlp_sam_forward(HSI.shape,
-                                                      torch_train_pic,
-                                                      self.input_location,
-                                                      self.input_label,
-                                                      self.loss_location,
-                                                      self.loss_label,
-                                                      epoch,
-                                                      self.param,
-                                                      if_mlp=self.if_mlp_need)
+                losses, per_acc = self._mlp_sam_forward(HSI.shape,
+                                                        torch_train_pic,
+                                                        self.input_location,
+                                                        self.input_label,
+                                                        self.loss_location,
+                                                        self.loss_label,
+                                                        epoch,
+                                                        self.param,
+                                                        if_mlp=self.if_mlp_need)
                 if self.if_mlp_need:
                     self.Adam.zero_grad()
                     losses.backward()
                     self.Adam.step()
                 end_time = time.time()
+                print(f"epoch {epoch}, loss is {losses}, use {end_time - begin_time} s, acc is {per_acc}")
                 # ---------------------------------------------Train End------------------------------------------------
                 # -----------------------------------------------Test---------------------------------------------------
                 if epoch % 50 == 0:
-                    self.MLP.eval()
-                    losses, OAs = self._mlp_sam_forward(HSI.shape,
-                                                              torch_train_pic,
-                                                              self.train_location,
-                                                              self.train_label,
-                                                              self.test_location,
-                                                              self.test_label,
-                                                              epoch,
-                                                              self.param,
-                                                              if_test=True,
-                                                              if_mlp=self.if_mlp_need)
-                    print(f"test OA is {OAs}, epoch is {epoch}")
+                    self.IntoSAM.eval()
+                    losses, per_accs = self._mlp_sam_forward(HSI.shape,
+                                                             torch_train_pic,
+                                                             self.train_location,
+                                                             self.train_label,
+                                                             self.test_location,
+                                                             self.test_label,
+                                                             epoch,
+                                                             self.param,
+                                                             if_test=True,
+                                                             if_mlp=self.if_mlp_need)
+                    print(f"test AA is {per_accs}, epoch is {epoch}")
                 # ------------------------------------------Test End-----------------------------------------------
                 if epoch == self.param.epochs - 1:
-                    data_process.write_file(self.current_class, OAs)
-                    torch.save(self.MLP.state_dict(), "./pth/class/" + str(self.current_class))
+                    data_process.write_file(self.current_class, per_accs)
+                    torch.save(self.IntoSAM.state_dict(), "./pth/class/" + str(self.current_class))
 
     def _mlp_sam_forward(
             self,
@@ -194,16 +200,18 @@ class train(model):
         height, width, band = shape
         location_num, _ = data_location.shape
         inputs = data.clone()
-        # Feed into MLP
+        # Feed into IntoSAM
         if if_mlp:
-            mlp_out = self.MLP.forward(inputs.float())
-            # MLP out as the input of sam augment
+            mlp_out = self.IntoSAM.forward(inputs.float())
+            # IntoSAM out as the input of sam augment
             sam_aug = self.sam.get_apply_image(mlp_out)
         else:
             sam_aug = self.sam.get_apply_image(inputs)
         self.sam.set_torch_image(sam_aug, (height, width))
         # Predict
         sam_out, _, _ = self.sam.predict(input_location, input_label, return_logits=not if_test, multimask_output=False)
+        # if if_mlp and not if_test:
+            # sam_out = self.AfterSAM.forward(sam_out)
         data_location_x, data_location_y = torch.chunk(data_location, 2, dim=1)
         # Get target location mask
         sam_mask_out = sam_out[0, data_location_y.long(), data_location_x.long()]
@@ -211,7 +219,7 @@ class train(model):
         # Train mode
         if not if_test:
             losses = self.loss(sam_mask_out, loss_label.float())
-            OA = evals.OA(sam_mask_out, loss_label, if_replace01=True)
+            per_acc = self.evals.per_acc(sam_mask_out, loss_label, if_replace01=True)
         # Test mode
         else:
             sam_mask_out = sam_mask_out.int()
@@ -220,9 +228,10 @@ class train(model):
             sam_aug = np.squeeze(sam_aug, axis=0)
             data_process.show_pic(sam_aug, input_location, self.current_class, param.train_num, epoch, "Argument")
             # OA
-            OA = evals.OA(sam_mask_out, loss_label, if_replace01=False)
+            per_acc = self.evals.per_acc(sam_mask_out, loss_label, if_replace01=False)
             # sam output -> final
-            data_process.show_pic(sam_out, input_location, self.current_class, param.train_num, epoch, "test", replace=if_test)
+            data_process.show_pic(sam_out, input_location, self.current_class, param.train_num, epoch, "test",
+                                  replace=if_test)
             losses = 0
         # OA
-        return losses, OA
+        return losses, per_acc

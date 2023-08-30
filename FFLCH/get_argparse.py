@@ -24,7 +24,7 @@ class set_args:
         params.add_argument("--checkpoint_path", type=str, default="../segment_anything/sam_vit_b_01ec64.pth",
                             help="sam model path, must be same as model")
         params.add_argument("--mode", type=str, default="vit_b", help="sam model, must be same as checkpoint_path")
-        params.add_argument("--learning_rate", type=float, default=0.0005, help="learning rate")
+        params.add_argument("--learning_rate", type=float, default=0.0015, help="learning rate")
         params.add_argument("--train_num", type=int, default=10, help="the num of one class train data")
         params.add_argument("--max_classes", type=int, default=0)
         params.add_argument("--input_sam", type=float, default=0.5, help="the rate of train point to sam")
@@ -37,9 +37,9 @@ class set_args:
             self._args = params.parse_args()
             self._args.hsi = "./dataset/hsi/PaviaU.mat"
             self._args.label = "./dataset/label/PaviaU_gt.mat"
-            # self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"
-            # self._args.mode = "vit_h"
-        if self._mat_name == "salinas" or "salina":
+            self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"
+            self._args.mode = "vit_h"
+        if self._mat_name == "salinas":
             self._args = params.parse_args()
             self._args.hsi = "./dataset/hsi/Salinas_corrected.mat"
             self._args.label = "./dataset/label/Salinas_gt.mat"
