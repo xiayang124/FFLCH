@@ -24,11 +24,11 @@ class set_args:
         params.add_argument("--checkpoint_path", type=str, default="../segment_anything/sam_vit_b_01ec64.pth",
                             help="sam model path, must be same as model")
         params.add_argument("--mode", type=str, default="vit_b", help="sam model, must be same as checkpoint_path")
-        params.add_argument("--learning_rate", type=float, default=0.0015, help="learning rate")
+        params.add_argument("--learning_rate", type=float, default=0.002, help="learning rate")
         params.add_argument("--train_num", type=int, default=10, help="the num of one class train data")
         params.add_argument("--max_classes", type=int, default=0)
         params.add_argument("--input_sam", type=float, default=0.5, help="the rate of train point to sam")
-        params.add_argument("--epochs", type=int, default=2000, help="epoch")
+        params.add_argument("--epochs", type=int, default=1500, help="epoch")
         if self._mat_name == "pavia":
             self._args = params.parse_args()
             # self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"

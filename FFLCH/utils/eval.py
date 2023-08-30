@@ -10,10 +10,11 @@ class evaluation:
         self.total = 0
         self.AA = np.array([])
 
-    def per_acc(self, target_output, truly, if_replace01=True) \
+    def per_acc(self, target_output, truly, if_replace01=True, if_test=False) \
             -> List[float]:
         """
         The acc of per class.
+        :param if_test: Whether the mode is test
         :param target_output: Target
         :param truly: Ground truth
         :param if_replace01: If replacing to 0 and 1 is needed, defalut True
@@ -30,10 +31,12 @@ class evaluation:
 
         foreground = np.squeeze(np.argwhere(truly == 1))
         truly_fore, target_fore = truly[foreground], target[foreground]
-        self.sames = np.append(self.sames, np.sum(truly_fore == target_fore))
+        if if_test:
+            self.sames = np.append(self.sames, np.sum(truly_fore == target_fore))
         self.total = truly.shape[0]
         acc = np.sum(truly_fore == target_fore) / truly_fore.shape[0] * 100
-        self.AA = np.append(self.AA, acc)
+        if if_test:
+            self.AA = np.append(self.AA, acc)
         return acc
 
     def OA(self):

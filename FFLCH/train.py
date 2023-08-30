@@ -134,7 +134,7 @@ class train(model):
             torch_train_pic = torch.from_numpy(HSI.astype("int32")).to(self.device)
             # [h, w, b] -> [b, h, w] -> [1, b, h, w]
             torch_train_pic = torch.unsqueeze(torch_train_pic.permute((2, 0, 1)), dim=0)
-            for epoch in range(self.param.epochs):
+            for epoch in range(1, self.param.epochs + 1):
                 self.IntoSAM.train()
                 begin_time = time.time()
                 # Feed net
@@ -169,7 +169,7 @@ class train(model):
                                                              if_mlp=self.if_mlp_need)
                     print(f"test AA is {per_accs}, epoch is {epoch}")
                 # ------------------------------------------Test End-----------------------------------------------
-                if epoch == self.param.epochs - 1:
+                if epoch == self.param.epochs:
                     data_process.write_file(self.current_class, per_accs)
                     torch.save(self.IntoSAM.state_dict(), "./pth/class/" + str(self.current_class))
 
@@ -219,7 +219,7 @@ class train(model):
         # Train mode
         if not if_test:
             losses = self.loss(sam_mask_out, loss_label.float())
-            per_acc = self.evals.per_acc(sam_mask_out, loss_label, if_replace01=True)
+            per_acc = self.evals.per_acc(sam_mask_out, loss_label, if_replace01=True, if_test=False)
         # Test mode
         else:
             sam_mask_out = sam_mask_out.int()
@@ -228,7 +228,8 @@ class train(model):
             sam_aug = np.squeeze(sam_aug, axis=0)
             data_process.show_pic(sam_aug, input_location, self.current_class, param.train_num, epoch, "Argument")
             # OA
-            per_acc = self.evals.per_acc(sam_mask_out, loss_label, if_replace01=False)
+            if epoch == self.param.epochs:
+                per_acc = self.evals.per_acc(sam_mask_out, loss_label, if_replace01=False, if_test=True)
             # sam output -> final
             data_process.show_pic(sam_out, input_location, self.current_class, param.train_num, epoch, "test",
                                   replace=if_test)

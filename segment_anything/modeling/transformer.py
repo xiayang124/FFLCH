@@ -167,7 +167,7 @@ class TwoWayAttentionBlock(nn.Module):
         queries = queries + attn_out
         queries = self.norm2(queries)
 
-        # MLP block
+        # IntoSAM block
         mlp_out = self.mlp(queries)
         queries = queries + mlp_out
         queries = self.norm3(queries)
