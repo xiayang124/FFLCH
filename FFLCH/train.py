@@ -24,7 +24,7 @@ class model(nn.Module):
         self.out_channal = out_channal
         self.device = param.device
         self.loss = nn.BCEWithLogitsLoss().to(self.device)
-        self.MLP = Simple_Net(in_channal, out_channal, if_norm=False).to(self.device)
+        self.MLP = Simple_Net(in_channal, out_channal, if_norm=False, if_hide_layer=True).to(self.device)
         self.SAM = sam_model_registry[param.mode](param.checkpoint_path).to(self.device)
         self.Adam = optim.Adam(self.MLP.parameters(), lr=param.learning_rate)
         self.sam = SamPredictor(self.SAM)
@@ -35,8 +35,8 @@ class model(nn.Module):
 
     def train_mode(self, mlp_train=True, sam_train=False):
         """
-        Choose the net which will be frozen. If sam_train is True, the network will fine-tune
-        or the sam will be frozen. mlp_train and sam_train all False will cause the net never
+        Choose the net which want to be frozen. If sam_train is True, the network will fine-tune,
+        otherwise the sam will be frozen. mlp_train and sam_train all False will cause the net never
         backward.
 
         :param mlp_train: Whether freeze the MLP block, defalut True
@@ -54,7 +54,7 @@ class model(nn.Module):
 
     def feed_net(self, mlp_train=True, sam_train=True):
         """
-        Choose the net which is needed. MUST one of them is True at least.
+        Choose the net which is needed. MUST one of them is used(Ture) at least.
         :param mlp_train: Whether the mlp layer is needed, defalut True
         :param sam_train: Whether the sam layer is needed, defalut True
         """
@@ -111,6 +111,7 @@ class train(model):
 
         self.current_class = current_class
 
+    # TODO(Byan Xia): 整个流程需要继续优化，太冗杂且无序
     def train_process(self, HSI: np.ndarray, Label: np.ndarray):
         """
         Train process.
@@ -133,34 +134,33 @@ class train(model):
                 begin_time = time.time()
                 # Feed net
                 losses, OA = self._mlp_sam_forward(HSI.shape,
-                                                   torch_train_pic,
-                                                   self.input_location,
-                                                   self.input_label,
-                                                   self.loss_location,
-                                                   self.loss_label,
-                                                   epoch,
-                                                   self.param,
-                                                   if_mlp=self.if_mlp_need)
+                                                      torch_train_pic,
+                                                      self.input_location,
+                                                      self.input_label,
+                                                      self.loss_location,
+                                                      self.loss_label,
+                                                      epoch,
+                                                      self.param,
+                                                      if_mlp=self.if_mlp_need)
                 if self.if_mlp_need:
                     self.Adam.zero_grad()
                     losses.backward()
                     self.Adam.step()
                 end_time = time.time()
-                print(f"epoch {epoch}, loss is {losses}, use {end_time - begin_time} s, acc is {OA}")
                 # ---------------------------------------------Train End------------------------------------------------
                 # -----------------------------------------------Test---------------------------------------------------
-                if epoch % 20 == 0:
+                if epoch % 50 == 0:
                     self.MLP.eval()
                     losses, OAs = self._mlp_sam_forward(HSI.shape,
-                                                        torch_train_pic,
-                                                        self.train_location,
-                                                        self.train_label,
-                                                        self.test_location,
-                                                        self.test_label,
-                                                        epoch,
-                                                        self.param,
-                                                        if_test=True,
-                                                        if_mlp=self.if_mlp_need)
+                                                              torch_train_pic,
+                                                              self.train_location,
+                                                              self.train_label,
+                                                              self.test_location,
+                                                              self.test_label,
+                                                              epoch,
+                                                              self.param,
+                                                              if_test=True,
+                                                              if_mlp=self.if_mlp_need)
                     print(f"test OA is {OAs}, epoch is {epoch}")
                 # ------------------------------------------Test End-----------------------------------------------
                 if epoch == self.param.epochs - 1:

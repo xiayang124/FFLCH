@@ -4,13 +4,14 @@ import torch
 import numpy as np
 
 
+# TODO(Byan Xia): 重做OA，完成AA
 def OA(target_output, truly, if_replace01=True) \
         -> float:
     """
-    Overall Accuracy(fore and background)
+    Overall Accuracy(fore and background).
     :param target_output: Test output
     :param truly: True label
-    :param if_replace01: Whether to use substitution
+    :param if_replace01: Whether use substitution, defalut True(use)
     :return: OA
     """
     if type(target_output) == torch.Tensor:
@@ -28,8 +29,4 @@ def OA(target_output, truly, if_replace01=True) \
 
 def AA(target_output, truly, if_replace01=True)\
         -> List[float]:
-    pass
-
-
-def Precise():
     pass

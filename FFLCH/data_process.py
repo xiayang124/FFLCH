@@ -52,6 +52,7 @@ def set_pca(HSI: np.ndarray, choose_band=3) \
     return hsi
 
 
+# TODO(Byan Xia): 感觉这坨还是太多了
 def show_pic(data: torch.Tensor or np.ndarray, location: np.ndarray, current_label: int, get_num: int, epoch: int,
              stage: str, replace=False):
     """
@@ -127,7 +128,7 @@ def write_file(current_label: int, OA: float):
 def location_seg(Label: np.ndarray, train_num: int, input_rate: float) \
         -> Tuple[dict, dict, dict, dict]:
     """
-    Get location about input sam, loss, all train data and test data.
+    Get location about input sam, loss conpare, all train data(test input sam) and test data.
     :param Label: Initial label data.
     :param train_num: The sum of train data
     :param input_rate: The sum of input segment anything model

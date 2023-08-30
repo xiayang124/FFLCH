@@ -2,11 +2,13 @@ import data_process as dls
 import torch
 from get_argparse import set_args
 import train
+import numpy as np
 
 
 def initial_process(HSI, Label, param):
+    # TODO(Byan Xia): 怎么把这组参数另找个地方设置呢？
     if_mlp_train = True
-    if_feed_mlp = False
+    if_feed_mlp = True
     if_sam_train = False
     if_feed_sam = True
     out_channel = 3
@@ -15,6 +17,7 @@ def initial_process(HSI, Label, param):
     if not if_feed_mlp:
         band = 3
         HSI = dls.set_pca(HSI, choose_band=band)
+    # TODO(Byan Xia): 感觉下面的数据处理部分可以继续优化，有时间去做做
     # Get class location
     input_location, loss_location, train_location, test_location \
         = dls.location_seg(Label, param.train_num, param.input_sam)
@@ -29,6 +32,7 @@ def initial_process(HSI, Label, param):
     test_direct = torch.from_numpy(test_direct).to(param.device)
 
     for per_class in range(param.max_classes):
+        # Per class label
         per_input_label, per_loss_label, per_train_label, per_test_label \
             = input_label[per_class], loss_label[per_class], train_label[per_class], test_label[per_class]
 
@@ -53,7 +57,7 @@ def initial_process(HSI, Label, param):
 
 
 if __name__ == "__main__":
-    HSI_name = "PaviaU"
+    HSI_name = "Salina"
 
     # Get the args and data
     arg = set_args(HSI_name)

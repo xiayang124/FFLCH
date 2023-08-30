@@ -2,15 +2,16 @@ import torch
 import torch.nn as nn
 
 
+# TODO(Byan Xia): 加1~2层用于SAM尾部的1*1 conv
 class Simple_Net(nn.Module):
     def __init__(self, in_channels: int, out_channel=3, if_conv33=False, if_norm=True, if_hide_layer=False):
         """
-        Initial SimpleNet Conv, change HSI to easy-segment image to improve SAM effect, default use only 1*1 conv
+        Simple Conv, used in change HSI to RGB image.
         :param in_channels: input channel
         :param out_channel: output channel
-        :param if_conv33: Whether the 3*3 is needed, True presents NEED, False presents DO NOT NEED, default False
-        :param if_norm: Whether norm is needed, True presents NEED, False presents DO NOT NEED, default True
-        :param if_hide_layer: Whether hide_layer is needed, True presents NEED, False presents DO NOT NEED, default False
+        :param if_conv33: Whether use 3*3conv, True presents use, False presents do not use, default False
+        :param if_norm: Whether use norm, True presents use, False presents do not use, default True
+        :param if_hide_layer: Whether use two blocks of conv, True presents use, False presents do not use, default False
         """
         super().__init__()
         self.if_conv33 = if_conv33
@@ -31,7 +32,7 @@ class Simple_Net(nn.Module):
         if if_hide_layer:
             hide_layer = 16
             self.conv11 = nn.Conv2d(in_channels, hide_layer, kernel_size=1, stride=1)
-            self.hide_norm = nn.LayerNorm(hide_layer)
+            # self.hide_norm = nn.LayerNorm(hide_layer)
             self.relu = nn.ReLU()
             # Group 1
             if if_conv33:
@@ -55,7 +56,7 @@ class Simple_Net(nn.Module):
         # hide_layer is needed
         if self.if_hide_layer:
             data = self.conv11(data)
-            data = self.hide_norm(data)
+            # data = self.hide_norm(data)
             data = self.relu(data)
             data = self.group(data)
             if self.if_norm:

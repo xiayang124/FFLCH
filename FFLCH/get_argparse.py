@@ -39,6 +39,10 @@ class set_args:
             self._args.label = "./dataset/label/PaviaU_gt.mat"
             # self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"
             # self._args.mode = "vit_h"
+        if self._mat_name == "salinas" or "salina":
+            self._args = params.parse_args()
+            self._args.hsi = "./dataset/hsi/Salinas_corrected.mat"
+            self._args.label = "./dataset/label/Salinas_gt.mat"
 
     def _load_data(self)\
             -> Tuple[numpy.ndarray, numpy.ndarray]:
