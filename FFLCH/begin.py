@@ -1,15 +1,14 @@
 import data_process as dls
 import torch
 from get_argparse import set_args
-import train
-import utils.eval as e
+from net import FFLCHs
 import numpy as np
 
 
 def initial_process(HSI, Label, param):
     # TODO(Byan Xia): 怎么把这组参数另找个地方设置呢？
     if_mlp_train = True
-    if_feed_mlp = False
+    if_feed_mlp = True
     if_sam_train = False
     if_feed_sam = True
     out_channel = 3
@@ -32,8 +31,14 @@ def initial_process(HSI, Label, param):
     loss_direct = torch.from_numpy(loss_direct).to(param.device)
     test_direct = torch.from_numpy(test_direct).to(param.device)
 
-    evals = e.evaluation()
-
+    training = FFLCHs(in_channel=band,
+                      out_channel=out_channel,
+                      param=param,
+                      input_location=input_direct,
+                      loss_location=loss_direct,
+                      train_location=train_direct,
+                      test_location=test_direct
+                      )
     for per_class in range(param.max_classes):
         # Per class label
         per_input_label, per_loss_label, per_train_label, per_test_label \
@@ -41,27 +46,47 @@ def initial_process(HSI, Label, param):
 
         per_loss_label = torch.from_numpy(per_loss_label).to(param.device)
         per_test_label = torch.from_numpy(per_test_label).to(param.device)
-
-        training = train.train(in_channel=band,
-                               out_channel=out_channel,
-                               param=param,
-                               input_label=per_input_label,
-                               loss_label=per_loss_label,
-                               train_label=per_train_label,
-                               test_label=per_test_label,
-                               input_location=input_direct,
-                               loss_location=loss_direct,
-                               train_location=train_direct,
-                               test_location=test_direct,
-                               current_class=per_class,
-                               evals=evals)
+        # set current class label
+        training.set_label(input_label=per_input_label,
+                           loss_label=per_loss_label,
+                           train_label=per_train_label,
+                           test_label=per_test_label,
+                           current_class=per_class)
+        # Set train mode
         training.train_mode(mlp_train=if_mlp_train, sam_train=if_sam_train)
         training.feed_net(mlp_train=if_feed_mlp, sam_train=if_feed_sam)
-        training.train_process(HSI.copy(), Label.copy())
+        # Train entry
+        training.per_class_training(HSI.copy(), Label.copy())
 
-    oa = evals.OA()
-    aa = evals.average_acc()
-    print("oa is " + str(oa) + ", aa is " + str(aa))
+    torch_train_pic = torch.from_numpy(HSI.astype("int32")).to(param.device)  # Sample data process
+    torch_train_pic = torch.unsqueeze(torch_train_pic.permute((2, 0, 1)), dim=0)
+    # Initial AA can and correct can
+    aa = np.zeros(shape=(param.max_classes,))
+    sames = np.zeros(shape=(param.max_classes,))
+
+    for classes in range(param.max_classes):
+        # Per class label
+        per_input_label, per_loss_label, per_train_label, per_test_label \
+            = input_label[classes], loss_label[classes], train_label[classes], test_label[classes]
+
+        per_loss_label = torch.from_numpy(per_loss_label).to(param.device)
+        per_test_label = torch.from_numpy(per_test_label).to(param.device)
+        # set current class label
+        training.set_label(input_label=per_input_label,
+                           loss_label=per_loss_label,
+                           train_label=per_train_label,
+                           test_label=per_test_label,
+                           current_class=classes)
+        # predict(Test)
+        per_acc, same, mlp_out, sam_out = training.predict(HSI.shape, torch_train_pic)
+        aa[classes], sames[classes] = per_acc, same
+        # Show sam outcome
+        dls.show_pic(sam_out, train_direct, classes, param.train_num, 0, "final", replace=True)
+    # AA
+    AA = np.average(aa)
+    # OA
+    OA = np.sum(sames) / test_direct.shape[0] * 100
+    print(f"AA is {str(AA)}, OA is {str(OA)}.")
 
 
 if __name__ == "__main__":
