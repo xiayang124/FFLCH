@@ -49,7 +49,8 @@ class FFLCHs(model):
             loss_label: torch.Tensor,
             train_label: torch.Tensor,
             test_label: np.ndarray,
-            current_class: int
+            current_class: int,
+            epoch: int
     ):
         self.input_label = input_label
         self.loss_label = loss_label
@@ -57,6 +58,7 @@ class FFLCHs(model):
         self.test_label = test_label
 
         self.current_class = current_class
+        self.epoch = epoch
 
     def per_class_training(self, HSI: np.ndarray, Label: np.ndarray):
         """
@@ -70,26 +72,24 @@ class FFLCHs(model):
         torch_train_pic = torch.from_numpy(HSI.astype("int32")).to(self.device)  # Sample data process
         torch_train_pic = torch.unsqueeze(torch_train_pic.permute((2, 0, 1)), dim=0)  # [h, w, b] -> [b, h, w] -> [1, b, h, w]
         # ------------------------------------------------Begin Training------------------------------------------------
-        for epoch in range(1, self.param.epochs + 1):
-            begin_time = time.time()
-            self.IntoSAM.train()
-            losses, per_acc = self.train_process(HSI.shape, torch_train_pic)
-            end_time = time.time()
-            print(f"epoch {epoch}, loss is {float(losses)}, use {end_time - begin_time} s, acc is {per_acc}")
-            # -----------------------------------------------Train End-------------------------------------------------
-            # -------------------------------------------------Test----------------------------------------------------
-            if epoch % 25 == 0 or epoch == 1:
-                self.IntoSAM.eval()
-                per_accs, _, mlp_out, sam_out = self.predict(HSI.shape, torch_train_pic)
-                # Test use only
-                data_process.show_pic(mlp_out, self.train_location, self.current_class, self.param.train_num, epoch, "MLP")
-                data_process.show_pic(sam_out, self.train_location, self.current_class, self.param.train_num, epoch,
-                                      "test", replace=True)
-                print(f"test AA is {per_accs}, epoch is {epoch}")
-            # ------------------------------------------------Test End--------------------------------------------------
-            if epoch == self.param.epochs and epoch != 1:
-                data_process.write_file(self.current_class, per_accs)
-                torch.save(self.IntoSAM.state_dict(), "./pth/class/IntoSAM" + str(self.current_class))
+        begin_time = time.time()
+        self.IntoSAM.train()
+        losses, per_acc = self.train_process(HSI.shape, torch_train_pic)
+        end_time = time.time()
+        print(f"epoch {self.epoch}, loss is {float(losses)}, use {end_time - begin_time} s, acc is {per_acc}")
+        # ---------------------------------------------------Train End--------------------------------------------------
+        # -----------------------------------------------------Test-----------------------------------------------------
+        if self.epoch % 25 == 0 or self.epoch == 1:
+            self.IntoSAM.eval()
+            per_accs, _, mlp_out, sam_out = self.predict(HSI.shape, torch_train_pic)
+            # Test use only
+            data_process.show_pic(mlp_out, self.train_location, self.current_class, self.param.train_num, self.epoch, "MLP")
+            data_process.show_pic(sam_out, self.train_location, self.current_class, self.param.train_num, self.epoch,
+                                  "test", replace=True)
+            print(f"test AA is {per_accs}, epoch is {self.epoch}")
+        # ----------------------------------------------------Test End--------------------------------------------------
+        if self.epoch == self.param.epochs and self.epoch != 1:
+            torch.save(self.IntoSAM.state_dict(), "./pth/class/IntoSAM" + str(self.current_class))
 
     @torch.no_grad()
     def predict(self, shape, HSI: torch.Tensor):

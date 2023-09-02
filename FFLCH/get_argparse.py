@@ -28,7 +28,7 @@ class set_args:
         params.add_argument("--train_num", type=int, default=10, help="the num of one class FFLCHs data")
         params.add_argument("--max_classes", type=int, default=0)
         params.add_argument("--input_sam", type=float, default=0.5, help="the rate of FFLCHs point to sam")
-        params.add_argument("--epochs", type=int, default=512, help="epoch")
+        params.add_argument("--epochs", type=int, default=2304, help="epoch")
         if self._mat_name == "pavia":
             self._args = params.parse_args()
             # self._args.checkpoint_path = "../segment_anything/sam_vit_h_4b8939.pth"

@@ -1,3 +1,6 @@
+import random
+import sys
+
 import data_process as dls
 import torch
 from get_argparse import set_args
@@ -39,7 +42,8 @@ def initial_process(HSI, Label, param):
                       train_location=train_direct,
                       test_location=test_direct
                       )
-    for per_class in range(param.max_classes):
+    for epoch in range(1, param.epochs + 1):
+        per_class = random.randint(0, param.max_classes - 1)
         # Per class label
         per_input_label, per_loss_label, per_train_label, per_test_label \
             = input_label[per_class], loss_label[per_class], train_label[per_class], test_label[per_class]
@@ -51,7 +55,8 @@ def initial_process(HSI, Label, param):
                            loss_label=per_loss_label,
                            train_label=per_train_label,
                            test_label=per_test_label,
-                           current_class=per_class)
+                           current_class=per_class,
+                           epoch=epoch)
         # Set train mode
         training.train_mode(mlp_train=if_mlp_train, sam_train=if_sam_train)
         training.feed_net(mlp_train=if_feed_mlp, sam_train=if_feed_sam)
@@ -76,7 +81,8 @@ def initial_process(HSI, Label, param):
                            loss_label=per_loss_label,
                            train_label=per_train_label,
                            test_label=per_test_label,
-                           current_class=classes)
+                           current_class=classes,
+                           epoch=1)
         # predict(Test)
         per_acc, same, mlp_out, sam_out = training.predict(HSI.shape, torch_train_pic)
         aa[classes], sames[classes] = per_acc, same
@@ -97,3 +103,4 @@ if __name__ == "__main__":
     args, HSI, Label = arg.get_arg()
 
     initial_process(HSI, Label, args)
+    sys.exit(114514)
